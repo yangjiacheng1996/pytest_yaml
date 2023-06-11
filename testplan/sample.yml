@@ -1,0 +1,11 @@
+---
+- vars:
+    url: "https://www.baidu.com"
+- case_name: case1
+  steps:
+    - script: sample
+      function_name: add
+      args:
+        a: 1
+        b: 2
+      assert: "True"
