@@ -34,7 +34,7 @@ def main():
 @click.option("-t", "--testplan", help="testplan file name in <project_dir>/testplan/\n", required=True,
               default="sample.yml")
 @click.option("-f", "--feature", help="this testing for which function?\n", required=True, default="Default")
-@click.option("-t", "--story", help="this testing for which target?\n", required=True, default="Default")
+@click.option("-s", "--story", help="this testing for which target?\n", required=True, default="Default")
 def test(testplan, feature, story):
     testplan_path = os.path.join(varpool.testplan_dir, testplan)
     data = read_yaml(testplan_path)
