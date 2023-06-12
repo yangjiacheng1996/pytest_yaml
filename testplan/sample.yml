@@ -1,11 +1,19 @@
 ---
 - vars:
     url: "https://www.baidu.com"
-- case_name: case1
+- case_name: add1+2
+  steps:
+    - script: sample # import case/sample.py
+      function_name: add # import
+      args:
+        a: 1
+        b: 2
+      assert: "True"
+- case_name: add3+4
   steps:
     - script: sample
       function_name: add
       args:
-        a: 1
-        b: 2
+        a: 3
+        b: 4
       assert: "True"
