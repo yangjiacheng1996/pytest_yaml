@@ -1,19 +1,27 @@
 ---
 - vars:
     url: "https://www.baidu.com"
+    # before running case ,you can save your own variables into varpool, even the vars are nothing to do with cases.
 - case_name: add1+2
   steps:
     - script: sample # import case/sample.py
-      function_name: add # import
+      function_name: add  # use function 'add' in sample.py
       args:
         a: 1
         b: 2
-      assert: "True"
+      assert:
+        - "boolean": "True"
+        - "equal": "3"
+      description: "test add"
 - case_name: add3+4
   steps:
     - script: sample
       function_name: add
       args:
-        a: 3
+        a: "{{ret}}"   # ret is the value which return by step1
         b: 4
-      assert: "True"
+      assert:
+        - "equal": 7
+        - "bigger": "{{ ret }}"  # The spaces on both sides do not affect the parsing of the variable.
+        - "smaller": 10
+        # This means: return of this step is bigger than former step , how a nice feature!

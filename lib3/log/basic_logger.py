@@ -12,7 +12,7 @@ def create_logger(logger_name=''):
     return logging.getLogger(logger_name)
 
 
-def create_rotating_file_handler(minlevel:str,filepath:str,mode="a",maxBytes=1024*1024,backupCount=10,
+def create_rotating_file_handler(minlevel:str,filepath:str,mode="a",maxBytes=1024*1024*5,backupCount=10,
                                  encoding="utf-8",logformat='%(asctime)s %(levelname)s %(message)s'):
     file_handler = logging.handlers.RotatingFileHandler(filepath,mode=mode,maxBytes=maxBytes,backupCount=backupCount,
                                                         encoding=encoding)

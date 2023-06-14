@@ -4,8 +4,10 @@
 import os
 import json
 import importlib.util
+import re
 import sys
-from lib3.log.basic_logger import create_logger, create_rotating_file_handler, logger_add_handler
+import logging
+import pytest_logger
 
 import pytest
 import allure
@@ -15,6 +17,7 @@ lib3_dir = os.path.join(project_dir, "lib3")
 result_dir = os.path.join(project_dir, "result")
 sys.path.append(lib3_dir)
 from lib3.settings.varpool import varpool
+from lib3.log.basic_logger import create_logger, create_rotating_file_handler, logger_add_handler
 
 
 def load_case_list():
@@ -44,22 +47,97 @@ def get_function(file_path, function_name):
     return function
 
 
-load_vars()
+def render_args(args: dict) -> dict:
+    """
+    render all {{ }} in args
+    """
+    for k, v in args.items():
+        args[k] = __get_value_from_varpool(str(v))
+    return args
+
+
+def __get_value_from_varpool(arg_string: str):
+    """
+    if you write args in testplan this:
+    args:
+      url: "https://xx.xxx.com/token={{token}}"
+    ......
+    and the {{token}} is a key of varpool from former cases
+    this function will replace {{token}} with actual value of varpool.token
+    """
+    if "{{" not in arg_string:
+        return arg_string
+    pattern = r"\{\{\s{0,5}(\w+)\s{0,5}\}\}"
+    matches = re.findall(pattern, arg_string)
+    if not matches:
+        return arg_string
+    values = [eval(f"varpool.{m}") for m in matches]
+    all_is_string = True
+    for v in values:
+        if not isinstance(v, str):
+            all_is_string = False
+            break
+    if all_is_string:
+        new_string = arg_string
+        for i in range(len(matches)):
+            p = r"(\{\{\s{0,5}" + f"{matches[i]}" + r"\s{0,5}\}\})"
+            new_string = re.sub(p, values[i], new_string)
+        return new_string
+    elif len(matches) >= 2 and not all_is_string:
+        logging.error(
+            f"Ops, you write {len(matches)} " + "{{ }} in args ,but some of them are not string, I cannot handle this!")
+        sys.exit(1)
+    else:
+        return values[0]
+
+
+def assertion(ret, assertion_list: list):
+    if not assertion_list:
+        assert ret, "Case return False,but you expect True!"
+    for one_assert in assertion_list:
+        if not isinstance(one_assert, dict):
+            logging.error(f"Ops,wrong format in assert,text is ： {json.dumps(one_assert)}")
+            assert False, "Format error!"
+        action = list(one_assert.keys())[0]
+        value = __get_value_from_varpool(one_assert[action]) if isinstance(one_assert[action], str) \
+            else one_assert[action]
+        if action == "boolean" and value == "True":
+            assert ret, "Case return False,but you expect True!"
+        elif action == "boolean" and value == "False":
+            assert not ret, "Case return True ,but you expect False!"
+        elif action == "equal":
+            assert int(ret) == int(value), f"return is not equal to {int(value)}"
+        elif action == "bigger":
+            assert int(ret) > int(value), f"return is {int(ret)}, expect > {int(value)}"
+        elif action == "bigger&equal":
+            assert int(ret) >= int(value), f"return is {int(ret)}, expect >= {int(value)}"
+        elif action == "smaller":
+            assert int(ret) < int(value), f"return is {int(ret)}, expect < {int(value)}"
+        elif action == "smaller&equal":
+            assert int(ret) <= int(value), f"return is {int(ret)}, expect <= {int(value)}"
+        elif action == "contain":
+            assert str(assertion_list[1]) in str(ret), f"Ops, {str(assertion_list[1])} is not in return:{str(ret)}"
+        elif action == "same":
+            assert str(assertion_list[1]) in str(ret), f"Ops, {str(assertion_list[1])} is not in return:{str(ret)}"
+        else:
+            assert False, f"Unknow key: {value}"
 
 
 
 @pytest.mark.parametrize("case", load_case_list())
 def test_case(case):
-    # 日志
+    # varpool
+    load_vars()
+    # log
     log_file = os.path.join(result_dir, "result.log")
     default_logger = create_logger()
-    filehandler = create_rotating_file_handler("INFO", log_file, backupCount=100)
+    filehandler = create_rotating_file_handler("DEBUG", log_file, backupCount=100)
     logger_add_handler(default_logger, filehandler)
-    # feature和story
+    # feature , story , suite
     allure.dynamic.feature(varpool.feature)
     allure.dynamic.story(varpool.story)
     allure.dynamic.suite(varpool.testplan)
-    # 加载case
+    # load case
     allure.dynamic.title("Case: %s" % case["case_name"])
     for step in case["steps"]:
         script = step.get("script", 0)
@@ -68,13 +146,12 @@ def test_case(case):
         function_name = step.get("function_name", 0)
         description = step.get("description", function_name)
         kwargs = step.get("args", 0)
-        assert_text = step.get("assert", "True")
+        kwargs = render_args(kwargs)
+        assert_list = step.get("assert", [])
         allure.step(f"Step: {description}")
         function_obj = get_function(os.path.join(project_dir, "case", script), function_name)
-        result = function_obj(**kwargs)
-        if assert_text == "True":
-            assert result
-        elif assert_text == "False":
-            assert not result
-        else:
-            assert eval(assert_text)
+        ret = function_obj(**kwargs)
+        logging.info("*" * 10 + "  return  " + "*" * 10)
+        assertion(ret, assert_list)
+        # record step return into varpool, following cases may use it .
+        varpool.ret = ret

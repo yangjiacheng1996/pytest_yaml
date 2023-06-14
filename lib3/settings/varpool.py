@@ -14,4 +14,5 @@ varpool.case_dir = os.path.join(varpool.project_dir, "case")
 varpool.lib3_dir = os.path.join(varpool.project_dir, "lib3")
 varpool.testplan_dir = os.path.join(varpool.project_dir, "testplan")
 varpool.result_dir = os.path.join(varpool.project_dir, "result")
+varpool.tools = os.path.join(varpool.project_dir, "tools")
 

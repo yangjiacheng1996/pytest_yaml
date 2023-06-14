@@ -38,7 +38,9 @@ def main():
 def test(testplan, feature, story):
     testplan_path = os.path.join(varpool.testplan_dir, testplan)
     data = read_yaml(testplan_path)
-    # testplan中有case或vars配置参数，所以需要将这两部分分开
+    # The list of dict in testplan file includes case dict and vars dict.
+    # Cases are going to be recorded into result/case.json
+    # Vars are planed updated into varpool first, then be recorded into result/vars.json
     case_list = []
     for i in range(len(data)):
         vars = data[i].get("vars", 0)
@@ -59,7 +61,10 @@ def test(testplan, feature, story):
     json.dump(varpool, varpool_json)
     varpool_json.close()
     case_json.close()
+    # Run test function which receive parameters.
     pytest.main([f"--alluredir={varpool.result_dir}", "-vs", os.path.join(varpool.lib3_dir, "pytest", "run_case.py")])
+    # Following codes will teach you how to use allure.
+    # You can change the logo in test report , if you cannot finish this , google it ! Lots of blogs!
     allure_path = os.path.join(varpool.project_dir, "tools", "allure", "bin", "allure")
     report_dir = os.path.join(varpool.result_dir,"report")
     allure_generate_cmd = f"{allure_path} generate {varpool.result_dir} -o {report_dir} --clean"
