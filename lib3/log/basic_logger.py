@@ -4,7 +4,13 @@
 import logging
 import logging.handlers
 import sys
+import os
 
+project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+lib3_dir = os.path.join(project_dir, "lib3")
+result_dir = os.path.join(project_dir, "result")
+sys.path.append(lib3_dir)
+from lib3.settings.varpool import varpool
 
 def create_logger(logger_name=''):
     logging.basicConfig(level=logging.DEBUG,format='%(asctime)s %(levelname)s %(message)s',
@@ -30,3 +36,10 @@ def create_stream_handler(minlevel:str,stream=sys.stdout,logformat='%(asctime)s 
 
 def logger_add_handler(logger,handler):
     logger.addHandler(handler)
+
+
+if __name__ == "__main__":
+    log_file = os.path.join(result_dir, "test_result.log")
+    logger = create_logger("test")
+    filehandler = create_rotating_file_handler("INFO", log_file, backupCount=10)
+    logger_add_handler(logger, filehandler)

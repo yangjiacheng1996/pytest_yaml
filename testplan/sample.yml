@@ -11,7 +11,7 @@
         b: 2
       assert:
         - "boolean": "True"
-        - "equal": "3"
+        - "equal": 3
       description: "test add"
 - case_name: add3+4
   steps:

@@ -9,7 +9,6 @@ import subprocess
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib3"))
 from lib3.settings.varpool import varpool
 from lib3.yaml.load_yaml import read_yaml
-from lib3.run_command.run_commnad import command
 
 import click
 import pytest
@@ -62,13 +61,21 @@ def test(testplan, feature, story):
     varpool_json.close()
     case_json.close()
     # Run test function which receive parameters.
-    pytest.main([f"--alluredir={varpool.result_dir}", "-vs", os.path.join(varpool.lib3_dir, "pytest", "run_case.py")])
+    cmd_list = [f"--alluredir={varpool.result_dir}",
+                "-o", "log_cli=True",
+                "-o", "log_cli_level=INFO",
+                "-o", "log_cli_date_format=%Y-%m-%d %H:%M:%S",
+                "-o", "log_cli_format=%(asctime)s %(levelname)s %(message)s",
+                "--capture=fd",
+                "-v", os.path.join(varpool.lib3_dir,"pytest", "run_case.py")]
+    pytest.main(cmd_list)
     # Following codes will teach you how to use allure.
     # You can change the logo in test report , if you cannot finish this , google it ! Lots of blogs!
-    allure_path = os.path.join(varpool.project_dir, "tools", "allure", "bin", "allure")
-    report_dir = os.path.join(varpool.result_dir,"report")
-    allure_generate_cmd = f"{allure_path} generate {varpool.result_dir} -o {report_dir} --clean"
-    allure_show_cmd = f"{allure_path} open {report_dir}"
+    report_dir = os.path.join(varpool.result_dir, "report")
+    wget_allure_command = "wget https://github.com/allure-framework/allure2/releases/download/2.22.4/allure-2.22.4.zip"
+    allure_generate_cmd = f"allure generate {varpool.result_dir} -o {report_dir} --clean"
+    allure_show_cmd = f"allure open {report_dir}"
+    print(f"To download allure,run command:\n\t{wget_allure_command}")
     print(f"To generate report,install java then use command:\n\t{allure_generate_cmd}")
     print(f"To show report in browser,use command: \n\t{allure_show_cmd}")
     os.remove(os.path.join(varpool.result_dir, "case.json"))

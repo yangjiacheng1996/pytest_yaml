@@ -111,6 +111,7 @@ ENV/
 env.bak/
 venv.bak/
 .pytest_cache
+lib3/pytest/.pytest_cache
 result
 
 # Spyder project settings

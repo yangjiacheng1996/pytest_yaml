@@ -7,7 +7,6 @@ import importlib.util
 import re
 import sys
 import logging
-import pytest_logger
 
 import pytest
 import allure
@@ -18,6 +17,31 @@ result_dir = os.path.join(project_dir, "result")
 sys.path.append(lib3_dir)
 from lib3.settings.varpool import varpool
 from lib3.log.basic_logger import create_logger, create_rotating_file_handler, logger_add_handler
+
+# log
+'''
+pytest log knowledges:
+All log fall into 2 categories: python log or pytest log
+you can control python logs by logging 
+you can control pytest logs by pytest.ini
+By default , pytest will capture python warning,error,critical logging, and system stdout + stderr 
+so your logging.info will not be printed or writen into log file by pytest!
+
+the logging.info in cases will be force captured and ignored by pytest , you must open log_cli.
+if you want to write info into python log file ,set pytest.ini like this:
+log_cli = True
+log_cli_level = INFO
+log_cli_date_format = %Y-%m-%d %H:%M:%S
+log_cli_format = %(asctime)s %(levelname)s %(message)s
+
+pytest command parameters about log
+--capture=fd/sys/no/tee-sys , decides how system and python logging logs can be capture by pytest.default is fd
+--show-capture=no/stdout/stderr/log/all ,decides what are going to print to stdout when case failed. default is all
+'''
+log_file = os.path.join(result_dir, "result.log")
+logger = create_logger()
+filehandler = create_rotating_file_handler("INFO", log_file,maxBytes=5*1024*1024, backupCount=10)
+logger_add_handler(logger, filehandler)
 
 
 def load_case_list():
@@ -122,17 +146,23 @@ def assertion(ret, assertion_list: list):
         else:
             assert False, f"Unknow key: {value}"
 
-
+def logging_boxed_info(message:str,heng="-",shu="|"):
+    lines = message.split('\n')
+    max_line_length = max(len(line) for line in lines)
+    box_width = max_line_length + 4
+    horizontal_line = heng * box_width
+    logging.info(horizontal_line)
+    for line in lines:
+        formatted_line = f'{shu} {line.ljust(max_line_length)} {shu}'
+        logging.info(formatted_line)
+    logging.info(horizontal_line)
 
 @pytest.mark.parametrize("case", load_case_list())
 def test_case(case):
     # varpool
     load_vars()
-    # log
-    log_file = os.path.join(result_dir, "result.log")
-    default_logger = create_logger()
-    filehandler = create_rotating_file_handler("DEBUG", log_file, backupCount=100)
-    logger_add_handler(default_logger, filehandler)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s',
+                        datefmt='%a, %d %b %Y %H:%M:%S')
     # feature , story , suite
     allure.dynamic.feature(varpool.feature)
     allure.dynamic.story(varpool.story)
@@ -151,7 +181,14 @@ def test_case(case):
         allure.step(f"Step: {description}")
         function_obj = get_function(os.path.join(project_dir, "case", script), function_name)
         ret = function_obj(**kwargs)
-        logging.info("*" * 10 + "  return  " + "*" * 10)
+        if isinstance(ret,int) or isinstance(ret,str) or isinstance(ret,bool) or isinstance(ret,float):
+            logging_boxed_info("step return: \n"+str(ret))
+        elif isinstance(ret,list) or isinstance(ret,dict):
+            logging_boxed_info("step return: \n"+json.dumps(ret))
+        elif isinstance(ret,set) or isinstance(ret, tuple):
+            logging_boxed_info("step return: \n"+json.dumps(list(ret)))
+        else:
+            logging.info("step return: \n"+"An object")
         assertion(ret, assert_list)
         # record step return into varpool, following cases may use it .
         varpool.ret = ret
